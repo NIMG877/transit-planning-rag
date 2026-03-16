@@ -1,0 +1,59 @@
+- pdf_path: ../files/2022_上海市交通发展白皮书.pdf
+  year: 2022
+  publisher: "上海市交通委员会"
+  doc_type: "白皮书"
+  pages: [6, 66]
+  rules:
+    header_pattern: "\\n-\\d+-"
+    extra_patterns:
+      - pattern: "\\s+\\d+$"
+        replacement: ""
+      - pattern: "^\\s*\\d+\\s*$"
+        replacement: ""
+      - pattern: "1 30分钟内部通勤并联系周边中心镇，45分钟到达近沪城市、中心城和相邻新城，60分钟衔接国际枢纽。\\n2都市区1小时通勤、城市群2小时通达、全国主要城市3小时覆盖。\\n3国内1天送达、周边国家2天送达、全球主要城市3天送达。"
+        replacement: ""
+    merge_line_breaks: true
+    remove_special_chars: false
+
+- pdf_path: ../files/上海市城市总体规划（2017-2035年）.pdf
+  year: 2018
+  publisher: "上海市人民政府"
+  doc_type: "总体规划"
+  pages: [[3, 7], [11, 121]]
+  rules:
+    merge_line_breaks: true
+    remove_special_chars: false
+    extra_patterns:
+      - pattern: "\\n\\d+\\n"
+        replacement: "\\n"
+      - pattern: "（见表\\d+-\\d+）"
+        replacement: ""
+      - pattern: "(见表\\d+-\\d+)"
+        replacement: ""
+      - pattern: "见表\\d+-\\d+"
+        replacement: ""
+
+- pdf_path: ../files/上海市综合交通发展“十四五”规划.pdf
+  year: 2021
+  publisher: "上海市人民政府"
+  doc_type: "发展规划"
+  pages: [1,30]
+  rules:
+    merge_line_breaks: true
+    remove_special_chars: false
+
+- pdf_path: ../files/推进本市公共交通高质量发展的指导意见.pdf
+  year: 2025
+  publisher: "上海市交通委员会"
+  doc_type: "指导意见"
+  pages: [1, 4]
+  rules:
+    merge_line_breaks: true
+
+- pdf_path: ../files/上海市轨道交通规划建设回顾与展望.pdf
+  year: 2025
+  publisher: "中国城市规划网"
+  doc_type: "会议报告"
+  pages: [1, 4]
+  rules:
+    merge_line_breaks: true
