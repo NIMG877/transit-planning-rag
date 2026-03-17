@@ -37,7 +37,7 @@ scripts/
 │  └─ entrypoints/
 │     ├─ init_pipeline.py
 │     └─ rag_entry.py
-└─ chroma_db/
+└─ faiss_db/
 ```
 
 ## 运行环境
@@ -53,7 +53,8 @@ scripts/
 - langchain-classic
 - transformers
 - sentence-transformers
-- chromadb
+- faiss-cpu
+- numpy
 - pdfplumber
 - pyyaml
 - tqdm
@@ -66,7 +67,7 @@ scripts/
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install -U pip
-pip install langchain-core langchain-classic transformers sentence-transformers chromadb pdfplumber pyyaml tqdm torch pydantic
+pip install langchain-core langchain-classic transformers sentence-transformers faiss-cpu numpy pdfplumber pyyaml tqdm torch pydantic
 ```
 
 ## 配置说明

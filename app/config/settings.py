@@ -3,9 +3,17 @@ from pathlib import Path
 import yaml
 
 HF_TOKEN = "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"
-QWEN_MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"
+# RAG 各环节模型配置
+RAG_REWRITE_MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
+RAG_RERANK_MODEL_NAME = "BAAI/bge-reranker-v2-m3"
+RAG_ANSWER_MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"
 EMBEDDING_MODEL_NAME = "BAAI/bge-large-zh"
+
 MAX_NEW_TOKENS = 512
+RAG_REWRITE_MAX_NEW_TOKENS = 96
+RAG_ENABLE_QUERY_REWRITE = True
+RAG_ENABLE_RERANK = True
+RAG_RERANK_CANDIDATE_TOP_K = 12
 
 PATHRAG_MAX_HOPS = 3
 PATHRAG_TOP_PATHS = 5

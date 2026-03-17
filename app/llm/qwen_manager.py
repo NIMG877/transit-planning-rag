@@ -6,13 +6,13 @@ from langchain_core.language_models.llms import LLM
 from pydantic import ConfigDict
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from app.config.settings import HF_TOKEN, MAX_NEW_TOKENS, QWEN_MODEL_NAME
+from app.config.settings import HF_TOKEN, MAX_NEW_TOKENS, RAG_ANSWER_MODEL_NAME
 
 
 class QwenTransformersLLM(LLM):
     tokenizer: Any
     model: Any
-    model_name: str = QWEN_MODEL_NAME
+    model_name: str = RAG_ANSWER_MODEL_NAME
     max_new_tokens: int = MAX_NEW_TOKENS
     temperature: float = 0.1
     top_p: float = 0.9
@@ -93,9 +93,9 @@ class QwenTransformersLLM(LLM):
         return trimmed_text.strip()
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=4)
 def load_qwen_llm(
-    model_name: str = QWEN_MODEL_NAME,
+    model_name: str = RAG_ANSWER_MODEL_NAME,
     max_new_tokens: int = MAX_NEW_TOKENS,
     temperature: float = 0.1,
     top_p: float = 0.9,

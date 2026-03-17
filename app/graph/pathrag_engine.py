@@ -21,7 +21,7 @@ from app.config.settings import (
 from app.llm.qwen_manager import load_qwen_llm
 from app.retrieval.vector_store import get_collection, get_embedding_model, retrieve
 
-GRAPH_CACHE_PATH = "./chroma_db/path_graph.json"
+GRAPH_CACHE_PATH = "./faiss_db/path_graph.json"
 DEFAULT_MAX_HOPS = PATHRAG_MAX_HOPS
 DEFAULT_TOP_PATHS = PATHRAG_TOP_PATHS
 DEFAULT_PATHS_PER_SEED = PATHRAG_MAX_PATHS_PER_SEED
