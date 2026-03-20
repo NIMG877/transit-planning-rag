@@ -9,7 +9,7 @@ import torch
 from sentence_transformers import SentenceTransformer, util
 
 from app.config.settings import EMBEDDING_MODEL_NAME, HF_TOKEN
-from app.rag.pipeline import ask_with_pathrag, build_retrieval_qa_chain
+from app.rag.pipeline import ask, ask_with_pathrag
 
 SUPPORTED_MODES = {"vector", "pathrag"}
 
@@ -54,9 +54,9 @@ def _load_cache(cache_path: str) -> dict[str, dict]:
     return cache
 
 
-def _invoke_mode_answer(mode: str, question: str, qa_chain=None, top_k: int = 3) -> tuple[str, list[str], int]:
+def _invoke_mode_answer(mode: str, question: str, top_k: int = 3) -> tuple[str, list[str], int]:
     if mode == "vector":
-        result = qa_chain.invoke({"query": question})
+        result = ask(question=question, top_k=top_k)
         sys_ans = result["result"]
         retrieved_sources = [doc.metadata.get("source", "") for doc in result["source_documents"]]
         return sys_ans, retrieved_sources, 0
@@ -87,7 +87,6 @@ def generate_and_cache_answers(csv_path: str, mode: str, top_k: int = 3) -> str:
     if mode not in SUPPORTED_MODES:
         raise ValueError(f"mode must be one of {SUPPORTED_MODES}, got: {mode}")
 
-    qa_chain = build_retrieval_qa_chain(top_k=top_k) if mode == "vector" else None
     cache_path = _cache_path_for_mode(csv_path, mode)
     data = _read_csv_rows(csv_path)
     total_questions = len(data)
@@ -112,7 +111,6 @@ def generate_and_cache_answers(csv_path: str, mode: str, top_k: int = 3) -> str:
             sys_ans, retrieved_sources, path_count = _invoke_mode_answer(
                 mode=mode,
                 question=question,
-                qa_chain=qa_chain,
                 top_k=top_k,
             )
 
@@ -252,7 +250,7 @@ def compare_metrics(vector_metrics: dict, pathrag_metrics: dict) -> None:
         path_rate = pathrag_metrics["difficulty_rates"].get(diff, 0.0)
         print(f"  - {diff}: Vector={vec_rate:.2%} | PathRAG={path_rate:.2%} | Delta={path_rate - vec_rate:+.2%}")
 
-def evaluate_model(csv_path: str, mode: str, top_k: int = 3) -> None:
+def evaluate_model(csv_path: str, mode: str, top_k: int = 3) -> dict:
     cache_path = generate_and_cache_answers(csv_path=csv_path, mode=mode, top_k=top_k)
     metrics = evaluate_cached_answers(csv_path=csv_path, cache_path=cache_path, mode=mode)
     return metrics

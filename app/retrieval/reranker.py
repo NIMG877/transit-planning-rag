@@ -12,6 +12,7 @@ def load_reranker(model_name: str = RAG_RERANK_MODEL_NAME) -> Any:
         model_name,
         trust_remote_code=True,
         token=HF_TOKEN,
+        device="cuda",
     )
 
 

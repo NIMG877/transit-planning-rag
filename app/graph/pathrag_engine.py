@@ -17,6 +17,7 @@ from app.config.settings import (
     PATHRAG_MAX_PATHS_PER_SEED,
     PATHRAG_TOP_PATHS,
     PATHRAG_TRIPLET_TEXT_MAX_CHARS,
+    PROMPT_CONFIG,
 )
 from app.llm.qwen_manager import load_qwen_llm
 from app.retrieval.vector_store import get_collection, get_embedding_model, retrieve
@@ -501,7 +502,7 @@ class PathRAG:
             lines.append(f"路径{idx}: {path_text} (score={path.score:.4f}, source={source_text})")
         return "\n".join(lines)
 
-    def answer(self, question: str, vector_top_k: int = 3) -> dict[str, Any]:
+    def answer(self, question: str, vector_top_k: int = 3, category_instruction: str = "") -> dict[str, Any]:
         retrieved_docs = retrieve(
             query=question,
             collection=self.collection,
@@ -518,16 +519,27 @@ class PathRAG:
         selected_docs = reranked_docs[:vector_top_k]
         vector_context = "\n\n".join([doc for doc, _distance, _meta, _hyb in selected_docs])
 
-        prompt = (
-            "你是一名轨道交通政策问答助手。请根据给定问题、路径证据和文本证据回答。\n"
-            "规则：\n"
-            "1. 优先使用路径证据组织逻辑，再用文本证据补充事实。\n"
-            "2. 不得编造，无法确定时回答：根据现有资料无法确定。\n"
-            "3. 回答简洁且只输出最终答案。\n\n"
-            f"[问题]\n{question}\n\n"
-            f"[路径证据]\n{path_context or '无可用路径'}\n\n"
-            f"[文本证据]\n{vector_context}\n\n"
-            "[回答]"
+        prompt_config = PROMPT_CONFIG()
+        base_template = str(prompt_config.get("pathrag_answer_base", "")).strip()
+        if not base_template:
+            base_template = (
+                "你是一名轨道交通政策问答助手。请根据给定问题、路径证据和文本证据回答。\n"
+                "规则：\n"
+                "1. 优先使用路径证据组织逻辑，再用文本证据补充事实。\n"
+                "2. 不得编造，无法确定时回答：根据现有资料无法确定。\n"
+                "3. 回答简洁且只输出最终答案。\n\n"
+                "分类回答风格要求：\n{category_instruction}\n\n"
+                "[问题]\n{question}\n\n"
+                "[路径证据]\n{path_context}\n\n"
+                "[文本证据]\n{vector_context}\n\n"
+                "[回答]"
+            )
+
+        prompt = base_template.format(
+            question=question,
+            path_context=path_context or "无可用路径",
+            vector_context=vector_context or "无可用文本证据",
+            category_instruction=category_instruction or "请保持回答结构清晰，优先提炼与问题最相关的政策信息。",
         )
 
         answer_text = self.llm.invoke(prompt)
@@ -611,6 +623,7 @@ def ask_pathrag(
     enable_llm_triplet: bool = PATHRAG_ENABLE_LLM_TRIPLET,
     hybrid_path_vector_alpha: float = PATHRAG_HYBRID_PATH_VECTOR_ALPHA,
     hybrid_doc_path_beta: float = PATHRAG_HYBRID_DOC_PATH_BETA,
+    category_instruction: str = "",
 ) -> dict[str, Any]:
     pipeline = build_pathrag_pipeline(
         max_hops=max_hops,
@@ -619,7 +632,11 @@ def ask_pathrag(
         hybrid_path_vector_alpha=hybrid_path_vector_alpha,
         hybrid_doc_path_beta=hybrid_doc_path_beta,
     )
-    return pipeline.answer(question=question, vector_top_k=vector_top_k)
+    return pipeline.answer(
+        question=question,
+        vector_top_k=vector_top_k,
+        category_instruction=category_instruction,
+    )
 
 
 def rebuild_path_graph(

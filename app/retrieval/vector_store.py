@@ -220,7 +220,7 @@ class FaissCollection:
 
 @lru_cache(maxsize=1)
 def get_embedding_model():
-    return SentenceTransformer(EMBEDDING_MODEL_NAME, token=HF_TOKEN)
+    return SentenceTransformer(EMBEDDING_MODEL_NAME, token=HF_TOKEN,device="cuda")
 
 
 @lru_cache(maxsize=1)

@@ -1,17 +1,19 @@
-# 基于 RAG 的轨道交通规划与政策智能问答助手
+# 基于 RAG 的交通规划与政策智能问答助手
 
 ## 项目简介
-本项目面向轨道交通规划与政策场景，提供两类问答能力：
+本项目面向交通规划与政策场景，提供两类问答能力：
 
 - Vector RAG：基于向量检索的问答。
 - PathRAG：在向量检索基础上，加入知识图谱路径证据进行增强推理。
+- Hybrid Multi-Recall：融合向量相似度召回与实体关系路径召回，联合生成答案。
 
 项目已完成模块化重构，主流程统一收敛到 `app` 包，支持：
 
 - 规划/政策文本抽取与清洗
-- 文本分块与向量库构建
+- 文本分块与向量库（FAISS）构建
 - 知识图谱构建（含批次与批内进度条）
 - Vector RAG / PathRAG 问答
+- Hybrid Multi-Recall 问答
 
 ## 目录结构
 
@@ -120,6 +122,12 @@ PathRAG：
 
 ```powershell
 python -m app.entrypoints.rag_entry "十四五期间上海综合交通发展的总体思路是什么？" --mode pathrag --top-k 3
+```
+
+Hybrid Multi-Recall：
+
+```powershell
+python -m app.entrypoints.rag_entry "十四五期间上海综合交通发展的总体思路是什么？" --mode hybrid --top-k 3
 ```
 
 ## 评估说明
