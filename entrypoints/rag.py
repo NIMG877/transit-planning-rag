@@ -1,4 +1,4 @@
-"""RAG 统一入口：支持普通向量RAG与PathRAG。"""
+"""RAG 统一入口"""
 
 import argparse
 import json

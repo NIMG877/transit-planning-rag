@@ -4,7 +4,6 @@
 本项目面向交通规划与政策场景，提供两类问答能力：
 
 - Vector RAG：基于向量检索的问答。
-- PathRAG：在向量检索基础上，加入知识图谱路径证据进行增强推理。
 - Hybrid Multi-Recall：融合向量相似度召回与实体关系路径召回，联合生成答案。
 
 项目已完成模块化重构，主流程统一收敛到根目录下的包结构，支持：
@@ -12,13 +11,13 @@
 - 规划/政策文本抽取与清洗
 - 文本分块与向量库（FAISS）构建
 - 知识图谱构建（含批次与批内进度条）
-- Vector RAG / PathRAG 问答
+- Vector RAG 问答
 - Hybrid Multi-Recall 问答
 
 ## 目录结构
 
 ```text
-scripts/
+.
 ├─ README.md
 ├─ requirements.txt
 ├─ config/
@@ -41,7 +40,8 @@ scripts/
 │  └─ metrics.py
 └─ entrypoints/
    ├─ init_pipeline.py
-   └─ rag_entry.py
+   ├─ rag.py
+   └─ evaluate.py
 ```
 
 ## 运行环境
@@ -51,26 +51,12 @@ scripts/
 - Python 3.13
 - Windows / Linux / macOS
 
-常用依赖（按代码导入整理）：
-
-- langchain-core
-- langchain-classic
-- transformers
-- sentence-transformers
-- faiss-cpu
-- numpy
-- pdfplumber
-- pyyaml
-- tqdm
-- torch
-- pydantic
 
 如果你使用 `venv`：
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\activate
-pip install -U pip
 pip install -r requirements.txt
 ```
 
@@ -92,13 +78,15 @@ pip install -r requirements.txt
 - `rules`：清洗规则
 - `year/publisher/doc_type`：元信息
 
-注意：请在 `scripts` 目录下执行命令，以保证相对路径行为与当前配置一致。
+注意：请在根目录下执行命令，以保证相对路径行为与当前配置一致。
+
+> 说明：`HF_TOKEN`、交通政策规划原始文件，以及测试用例数据均因数据隐私和版权限制无法随项目公开提供。
 
 ## 快速开始
 
 ### 1) 初始化资源（向量库 / 知识图谱）
 
-在 `scripts` 目录执行：
+在根目录执行：
 
 ```powershell
 python -m entrypoints.init_pipeline --target all
@@ -117,19 +105,25 @@ python -m entrypoints.init_pipeline --target all
 Vector RAG：
 
 ```powershell
-python -m entrypoints.rag_entry "十四五期间上海综合交通发展的总体思路是什么？" --mode vector --top-k 3
+python -m entrypoints.rag "十四五期间上海综合交通发展的总体思路是什么？" --mode vector --top-k 3
 ```
 
 PathRAG：
 
 ```powershell
-python -m entrypoints.rag_entry "十四五期间上海综合交通发展的总体思路是什么？" --mode pathrag --top-k 3
+python -m entrypoints.rag "十四五期间上海综合交通发展的总体思路是什么？" --mode pathrag --top-k 3
 ```
 
 Hybrid Multi-Recall：
 
 ```powershell
-python -m entrypoints.rag_entry "十四五期间上海综合交通发展的总体思路是什么？" --mode hybrid --top-k 3
+python -m entrypoints.rag "十四五期间上海综合交通发展的总体思路是什么？" --mode hybrid --top-k 3
+```
+
+### 3) 运行评估
+
+```powershell
+python -m entrypoints.evaluate --csv-path ../datas/QA_pairs.csv --top-k 3
 ```
 
 ## 评估说明
@@ -141,7 +135,7 @@ python -m entrypoints.rag_entry "十四五期间上海综合交通发展的总�
 - 数据类问题精确率
 - 分难度通过率
 
-如需将评估暴露为命令行入口，可新增 `entrypoints/evaluate_entry.py` 并调用 `evaluate_dual_modes`。
+如需将评估暴露为命令行入口，可新增 `entrypoints/evaluate.py` 并调用 `evaluate_dual_modes`。
 
 ## 常见问题
 
@@ -150,7 +144,7 @@ python -m entrypoints.rag_entry "十四五期间上海综合交通发展的总�
 - PathRAG 启用 LLM 三元组抽取时，图谱构建更慢但证据质量通常更好。
 
 ### 2) 路径找不到
-- 确保在 `scripts` 目录执行命令。
+- 确保在根目录执行命令。
 - 检查 `config/pdf_config.yaml` 中的 `pdf_path` 是否正确。
 
 ### 3) 显存/内存不足

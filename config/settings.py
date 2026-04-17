@@ -3,7 +3,7 @@ from functools import lru_cache
 
 import yaml
 
-HF_TOKEN = "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"
+HF_TOKEN = ""
 # RAG 各环节模型配置
 RAG_REWRITE_MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
 RAG_CLASSIFIER_MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"
