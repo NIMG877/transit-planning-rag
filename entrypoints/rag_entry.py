@@ -3,7 +3,7 @@
 import argparse
 import json
 
-from app.rag.pipeline import ask, ask_with_multi_recall, ask_with_pathrag
+from rag.pipeline import ask, ask_with_multi_recall, ask_with_pathrag
 
 
 def main() -> None:

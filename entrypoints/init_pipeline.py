@@ -2,8 +2,8 @@
 
 import argparse
 
-from app.graph.pathrag_engine import rebuild_path_graph
-from app.retrieval.vector_store import build_index, get_collection, get_embedding_model
+from graph.pathrag_engine import rebuild_path_graph
+from retrieval.vector_store import build_index, get_collection, get_embedding_model
 
 
 def init_vector_db() -> None:

@@ -8,8 +8,8 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-from app.config.settings import EMBEDDING_MODEL_NAME, HF_TOKEN, PDF_CONFIG
-from app.ingestion.pdf_reader import extract_and_clean_all_pdf
+from config.settings import EMBEDDING_MODEL_NAME, HF_TOKEN, PDF_CONFIG
+from ingestion.pdf_reader import extract_and_clean_all_pdf
 
 FAISS_DB_PATH = "./faiss_db"
 INDEX_FILE_NAME = "traffic_docs.faiss"

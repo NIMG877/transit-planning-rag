@@ -8,7 +8,7 @@ from functools import lru_cache
 from typing import Any
 from tqdm import tqdm
 
-from app.config.settings import (
+from config.settings import (
     MAX_NEW_TOKENS,
     PATHRAG_ENABLE_LLM_TRIPLET,
     PATHRAG_HYBRID_DOC_PATH_BETA,
@@ -19,8 +19,8 @@ from app.config.settings import (
     PATHRAG_TRIPLET_TEXT_MAX_CHARS,
     PROMPT_CONFIG,
 )
-from app.llm.qwen_manager import load_qwen_llm
-from app.retrieval.vector_store import get_collection, get_embedding_model, retrieve
+from llm.qwen_manager import load_qwen_llm
+from retrieval.vector_store import get_collection, get_embedding_model, retrieve
 
 GRAPH_CACHE_PATH = "./faiss_db/path_graph.json"
 DEFAULT_MAX_HOPS = PATHRAG_MAX_HOPS

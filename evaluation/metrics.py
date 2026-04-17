@@ -8,8 +8,8 @@ from difflib import SequenceMatcher
 import torch
 from sentence_transformers import SentenceTransformer, util
 
-from app.config.settings import EMBEDDING_MODEL_NAME, HF_TOKEN
-from app.rag.pipeline import ask, ask_with_pathrag
+from config.settings import EMBEDDING_MODEL_NAME, HF_TOKEN
+from rag.pipeline import ask, ask_with_pathrag
 
 SUPPORTED_MODES = {"vector", "pathrag"}
 

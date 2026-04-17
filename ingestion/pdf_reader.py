@@ -4,8 +4,8 @@ import pdfplumber
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
-from app.config.settings import HF_TOKEN, MAX_NEW_TOKENS, EMBEDDING_MODEL_NAME
-from app.ingestion.chunking import split_by_tokens
+from config.settings import HF_TOKEN, MAX_NEW_TOKENS, EMBEDDING_MODEL_NAME
+from ingestion.chunking import split_by_tokens
 
 
 def _resolve_page_indices(pages, total_pages):
@@ -221,7 +221,7 @@ def extract_and_clean_all_pdf(pdf_config):
     return all_chunks, chunk_sources
 
 if __name__ == "__main__":
-    from app.config.settings import PDF_CONFIG
+    from config.settings import PDF_CONFIG
 
     idx=2
     pdf_i=PDF_CONFIG()[idx]

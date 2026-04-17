@@ -6,7 +6,7 @@ from langchain_core.language_models.llms import LLM
 from pydantic import ConfigDict
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from app.config.settings import HF_TOKEN, MAX_NEW_TOKENS, RAG_ANSWER_MODEL_NAME
+from config.settings import HF_TOKEN, MAX_NEW_TOKENS, RAG_ANSWER_MODEL_NAME
 
 
 class QwenTransformersLLM(LLM):

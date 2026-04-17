@@ -6,7 +6,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.retrievers import BaseRetriever
 from pydantic import ConfigDict
 
-from app.config.settings import (
+from config.settings import (
     RAG_ANSWER_MODEL_NAME,
     RAG_CLASSIFIER_MAX_NEW_TOKENS,
     RAG_CLASSIFIER_MODEL_NAME,
@@ -20,9 +20,9 @@ from app.config.settings import (
     PATHRAG_HYBRID_DOC_PATH_BETA,
     PATHRAG_HYBRID_PATH_VECTOR_ALPHA,
 )
-from app.llm.qwen_manager import load_qwen_llm
-from app.retrieval.reranker import load_reranker, rerank_documents
-from app.retrieval.vector_store import get_collection, get_embedding_model, retrieve
+from llm.qwen_manager import load_qwen_llm
+from retrieval.reranker import load_reranker, rerank_documents
+from retrieval.vector_store import get_collection, get_embedding_model, retrieve
 
 DEFAULT_TOP_K = 3
 
@@ -254,7 +254,7 @@ def ask_with_pathrag(
     hybrid_path_vector_alpha: float = PATHRAG_HYBRID_PATH_VECTOR_ALPHA,
     hybrid_doc_path_beta: float = PATHRAG_HYBRID_DOC_PATH_BETA,
 ) -> dict[str, Any]:
-    from app.graph.pathrag_engine import ask_pathrag
+    from graph.pathrag_engine import ask_pathrag
 
     rewritten_question = rewrite_question(question)
     question_category = classify_question(rewritten_question)
@@ -285,7 +285,7 @@ def ask_with_multi_recall(
     hybrid_path_vector_alpha: float = PATHRAG_HYBRID_PATH_VECTOR_ALPHA,
     hybrid_doc_path_beta: float = PATHRAG_HYBRID_DOC_PATH_BETA,
 ) -> dict[str, Any]:
-    from app.graph.pathrag_engine import build_pathrag_pipeline
+    from graph.pathrag_engine import build_pathrag_pipeline
 
     rewritten_question = rewrite_question(question)
     question_category = classify_question(rewritten_question)

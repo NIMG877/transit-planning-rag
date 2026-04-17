@@ -3,7 +3,7 @@ from typing import Any
 
 from sentence_transformers import CrossEncoder
 
-from app.config.settings import HF_TOKEN, RAG_RERANK_MODEL_NAME
+from config.settings import HF_TOKEN, RAG_RERANK_MODEL_NAME
 
 
 @lru_cache(maxsize=1)
