@@ -108,12 +108,6 @@ Vector RAG：
 python -m entrypoints.rag "十四五期间上海综合交通发展的总体思路是什么？" --mode vector --top-k 3
 ```
 
-PathRAG：
-
-```powershell
-python -m entrypoints.rag "十四五期间上海综合交通发展的总体思路是什么？" --mode pathrag --top-k 3
-```
-
 Hybrid Multi-Recall：
 
 ```powershell
