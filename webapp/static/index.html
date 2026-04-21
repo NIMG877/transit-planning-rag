@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>交通规划与政策智能问答助手</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="ambient-grid" aria-hidden="true"></div>
+    <div class="blob blob-a" aria-hidden="true"></div>
+    <div class="blob blob-b" aria-hidden="true"></div>
+
+    <main class="app-shell">
+      <header class="hero">
+        <p class="hero-kicker">Local RAG Workspace</p>
+        <h1>交通规划与政策智能问答助手</h1>
+        <p class="hero-subtitle">
+          在本地完成“提问-检索-回答”闭环，支持向量检索、PathRAG 与 Hybrid 多路召回。
+        </p>
+      </header>
+
+      <section class="workspace" aria-label="问答工作区">
+        <form id="chat-form" class="glass-card chat-form">
+          <div class="field-row">
+            <label class="field" for="mode">
+              <span>问答模式</span>
+              <select id="mode" name="mode">
+                <option value="vector">Vector RAG</option>
+                <option value="pathrag">PathRAG</option>
+                <option value="hybrid">Hybrid Multi-Recall</option>
+              </select>
+            </label>
+
+            <label class="field" for="top-k">
+              <span>召回数量 Top-K</span>
+              <div class="range-wrap">
+                <input id="top-k" name="top-k" type="range" min="1" max="10" value="3" />
+                <output id="top-k-output" for="top-k">3</output>
+              </div>
+            </label>
+          </div>
+
+          <label class="field" for="question">
+            <span>你的问题</span>
+            <textarea
+              id="question"
+              name="question"
+              rows="7"
+              placeholder="例如：十四五期间上海综合交通发展的总体思路是什么？"
+              required
+            ></textarea>
+          </label>
+
+          <div class="quick-questions" id="quick-questions" aria-label="快捷问题"></div>
+
+          <div class="actions">
+            <button id="submit-btn" type="submit">开始问答</button>
+            <p id="status-text" role="status" aria-live="polite">准备就绪</p>
+          </div>
+        </form>
+
+        <section id="result-panel" class="glass-card result-panel" aria-live="polite">
+          <div class="panel-head">
+            <h2>回答结果</h2>
+            <div class="badges">
+              <span id="badge-mode" class="badge">模式：-</span>
+              <span id="badge-category" class="badge">分类：-</span>
+              <span id="badge-time" class="badge">耗时：-</span>
+            </div>
+          </div>
+
+          <article id="answer" class="answer empty">等待提问...</article>
+
+          <div class="meta-grid">
+            <section class="meta-block">
+              <h3>识别实体</h3>
+              <ul id="entities-list" class="chip-list empty"></ul>
+            </section>
+            <section class="meta-block">
+              <h3>路径证据</h3>
+              <ul id="paths-list" class="trace-list empty"></ul>
+            </section>
+          </div>
+
+          <section class="meta-block evidence-block">
+            <h3>文本证据片段</h3>
+            <ul id="docs-list" class="doc-list empty"></ul>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

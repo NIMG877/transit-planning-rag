@@ -114,7 +114,25 @@ Hybrid Multi-Recall：
 python -m entrypoints.rag "十四五期间上海综合交通发展的总体思路是什么？" --mode hybrid --top-k 3
 ```
 
-### 3) 运行评估
+### 3) 启动 Web UI（本地前端）
+
+在根目录执行：
+
+```powershell
+python -m entrypoints.webui --host 127.0.0.1 --port 8000
+```
+
+启动后在浏览器访问：
+
+- `http://127.0.0.1:8000`
+
+页面支持：
+
+- 模式切换（Vector RAG / PathRAG / Hybrid Multi-Recall）
+- Top-K 召回数量调整
+- 回答结果、实体、路径证据、文本证据展示
+
+### 4) 运行评估
 
 ```powershell
 python -m entrypoints.evaluate --csv-path ../datas/QA_pairs.csv --top-k 3
