@@ -6,10 +6,10 @@ from collections import defaultdict
 from difflib import SequenceMatcher
 
 import torch
-from sentence_transformers import SentenceTransformer, util
 
 from config.settings import EMBEDDING_MODEL_NAME, HF_TOKEN
 from rag.pipeline import ask, ask_with_pathrag
+from utils.hf_loader import load_sentence_transformer
 
 SUPPORTED_MODES = {"vector", "pathrag"}
 
@@ -19,7 +19,7 @@ def compute_semantic_similarity(ans1: str, ans2: str, model=None) -> float:
         with torch.no_grad():
             emb1 = model.encode(ans1, convert_to_tensor=True)
             emb2 = model.encode(ans2, convert_to_tensor=True)
-            return util.cos_sim(emb1, emb2).item()
+            return torch.nn.functional.cosine_similarity(emb1, emb2, dim=0).item()
     return SequenceMatcher(None, ans1, ans2).ratio()
 
 
@@ -136,7 +136,10 @@ def generate_and_cache_answers(csv_path: str, mode: str, top_k: int = 3) -> str:
 def evaluate_cached_answers(csv_path: str, cache_path: str, mode: str) -> dict:
     print("\nLoading evaluation models...")
     try:
-        semantic_model = SentenceTransformer(EMBEDDING_MODEL_NAME, token=HF_TOKEN)
+        semantic_model = load_sentence_transformer(
+            model_name=EMBEDDING_MODEL_NAME,
+            token=HF_TOKEN,
+        )
     except Exception:
         semantic_model = None
         print("SentenceTransformer not found, falling back to SequenceMatcher.")

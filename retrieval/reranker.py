@@ -1,15 +1,14 @@
 from functools import lru_cache
 from typing import Any
 
-from sentence_transformers import CrossEncoder
-
 from config.settings import HF_TOKEN, RAG_RERANK_MODEL_NAME
+from utils.hf_loader import load_cross_encoder
 
 
 @lru_cache(maxsize=1)
 def load_reranker(model_name: str = RAG_RERANK_MODEL_NAME) -> Any:
-    return CrossEncoder(
-        model_name,
+    return load_cross_encoder(
+        model_name=model_name,
         trust_remote_code=True,
         token=HF_TOKEN,
         device="cuda",

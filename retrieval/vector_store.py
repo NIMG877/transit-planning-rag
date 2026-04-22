@@ -6,10 +6,10 @@ from typing import Any
 
 import faiss
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 from config.settings import EMBEDDING_MODEL_NAME, HF_TOKEN, PDF_CONFIG
 from ingestion.pdf_reader import extract_and_clean_all_pdf
+from utils.hf_loader import load_sentence_transformer
 
 FAISS_DB_PATH = "./faiss_db"
 INDEX_FILE_NAME = "traffic_docs.faiss"
@@ -220,7 +220,11 @@ class FaissCollection:
 
 @lru_cache(maxsize=1)
 def get_embedding_model():
-    return SentenceTransformer(EMBEDDING_MODEL_NAME, token=HF_TOKEN,device="cuda")
+    return load_sentence_transformer(
+        model_name=EMBEDDING_MODEL_NAME,
+        token=HF_TOKEN,
+        device="cuda",
+    )
 
 
 @lru_cache(maxsize=1)

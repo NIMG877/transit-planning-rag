@@ -2,10 +2,10 @@ import re
 
 import pdfplumber
 from tqdm import tqdm
-from transformers import AutoTokenizer
 
-from config.settings import HF_TOKEN, MAX_NEW_TOKENS, EMBEDDING_MODEL_NAME
+from config.settings import EMBEDDING_MODEL_NAME, HF_TOKEN, MAX_NEW_TOKENS
 from ingestion.chunking import split_by_tokens
+from utils.hf_loader import load_auto_tokenizer
 
 
 def _resolve_page_indices(pages, total_pages):
@@ -198,7 +198,10 @@ def extract_and_clean_all_pdf(pdf_config):
 
         text = extract_text_from_pdf(config["pdf_path"], config["pages"])
         cleaned_text = apply_rules(text, config["rules"])
-        tokenizer = AutoTokenizer.from_pretrained(EMBEDDING_MODEL_NAME, token=HF_TOKEN)
+        tokenizer = load_auto_tokenizer(
+            model_name=EMBEDDING_MODEL_NAME,
+            token=HF_TOKEN,
+        )
         chunks = split_by_tokens(
             cleaned_text,
             tokenizer,
@@ -230,7 +233,10 @@ if __name__ == "__main__":
     cleaned_text=apply_rules(text, pdf_i["rules"])
     # print(text)
     # print(cleaned_text)
-    tokenizer = AutoTokenizer.from_pretrained(EMBEDDING_MODEL_NAME, token=HF_TOKEN)
+    tokenizer = load_auto_tokenizer(
+        model_name=EMBEDDING_MODEL_NAME,
+        token=HF_TOKEN,
+    )
     chunks = split_by_tokens(
         cleaned_text,
         tokenizer,

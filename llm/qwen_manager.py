@@ -4,9 +4,9 @@ from typing import Any
 import torch
 from langchain_core.language_models.llms import LLM
 from pydantic import ConfigDict
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from config.settings import HF_TOKEN, MAX_NEW_TOKENS, RAG_ANSWER_MODEL_NAME
+from utils.hf_loader import load_auto_causal_lm, load_auto_tokenizer
 
 
 class QwenTransformersLLM(LLM):
@@ -100,12 +100,16 @@ def load_qwen_llm(
     temperature: float = 0.1,
     top_p: float = 0.9,
 ) -> QwenTransformersLLM:
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, token=HF_TOKEN)
+    tokenizer = load_auto_tokenizer(
+        model_name=model_name,
+        token=HF_TOKEN,
+        trust_remote_code=True,
+    )
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
+    model = load_auto_causal_lm(
+        model_name=model_name,
         token=HF_TOKEN,
         torch_dtype="auto",
         device_map="auto",

@@ -60,6 +60,37 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+## 统一本地优先加载机制
+
+当前版本已将所有模型加载入口统一到 `utils/hf_loader.py`，并采用本地优先策略：
+
+- 优先通过 `snapshot_download(..., local_files_only=True)` 检查并解析本地缓存快照路径。
+- 若本地缓存不存在，则自动回退为联网下载（`local_files_only=False`）。
+- 下载成功后继续基于本地快照路径加载 `transformers` 与 `sentence-transformers` 模型。
+
+已统一接入的加载场景包括：
+
+- LLM 生成模型（Qwen）
+- 向量嵌入模型（SentenceTransformer）
+- 重排模型（CrossEncoder）
+- PDF 分块分词器（AutoTokenizer）
+- 评估语义模型
+
+### 首次运行说明（无缓存时会自动下载）
+
+首次在新机器或新用户环境中运行时，如果本地缓存不存在，程序会自动联网下载并写入缓存；后续再次运行会优先复用本地缓存。
+
+你也可以提前手动预热缓存：
+
+```powershell
+huggingface-cli download Qwen/Qwen2.5-0.5B-Instruct
+huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct
+huggingface-cli download BAAI/bge-reranker-v2-m3
+huggingface-cli download BAAI/bge-large-zh
+```
+
+完成缓存后即可按下文命令运行。
+
 ## 配置说明
 
 ### 1) 模型与参数
@@ -152,7 +183,7 @@ python -m entrypoints.evaluate --csv-path ../datas/QA_pairs.csv --top-k 3
 ## 常见问题
 
 ### 1) 初始化或问答很慢
-- 首次运行会下载模型并构建索引，耗时较长。
+- 首次运行若本地没有模型缓存，会先自动下载模型；完成缓存后，初始化主要耗时来自索引构建。
 - PathRAG 启用 LLM 三元组抽取时，图谱构建更慢但证据质量通常更好。
 
 ### 2) 路径找不到
