@@ -3,7 +3,7 @@ from pathlib import Path
 
 import yaml
 
-HF_TOKEN = ""
+HF_TOKEN = "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"
 # RAG 各环节模型配置
 RAG_REWRITE_MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
 RAG_CLASSIFIER_MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"

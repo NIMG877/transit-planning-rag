@@ -20,74 +20,88 @@
         </p>
       </header>
 
-      <section class="workspace" aria-label="问答工作区">
-        <form id="chat-form" class="glass-card chat-form">
-          <div class="field-row">
-            <label class="field" for="mode">
-              <span>问答模式</span>
-              <select id="mode" name="mode">
-                <option value="vector">Vector RAG</option>
-                <option value="pathrag">PathRAG</option>
-                <option value="hybrid">Hybrid Multi-Recall</option>
-              </select>
-            </label>
-
-            <label class="field" for="top-k">
-              <span>召回数量 Top-K</span>
-              <div class="range-wrap">
-                <input id="top-k" name="top-k" type="range" min="1" max="10" value="3" />
-                <output id="top-k-output" for="top-k">3</output>
-              </div>
-            </label>
+      <section id="workspace" class="workspace" aria-label="问答工作区">
+        <section class="glass-card chat-panel">
+          <div id="chat-history" class="chat-history" aria-live="polite">
+            <section id="chat-empty" class="chat-empty">
+              <h2>先试试这些问题</h2>
+              <p>发送第一条问题后，这里会显示完整多轮问答记录。</p>
+              <div class="quick-questions" id="quick-questions" aria-label="快捷问题"></div>
+            </section>
           </div>
 
-          <label class="field" for="question">
-            <span>你的问题</span>
+          <form id="chat-form" class="composer" autocomplete="off">
+            <div id="settings-popover" class="settings-popover hidden" role="dialog" aria-label="问答设置">
+              <h3>问答设置</h3>
+
+              <label class="field" for="mode">
+                <span>问答模式</span>
+                <select id="mode" name="mode">
+                  <option value="vector">Vector RAG</option>
+                  <option value="pathrag">PathRAG</option>
+                  <option value="hybrid">Hybrid Multi-Recall</option>
+                </select>
+              </label>
+
+              <label class="field" for="top-k">
+                <span>召回数量 Top-K</span>
+                <div class="range-wrap">
+                  <input id="top-k" name="top-k" type="range" min="1" max="10" value="3" />
+                  <output id="top-k-output" for="top-k">3</output>
+                </div>
+              </label>
+            </div>
+
+            <label class="sr-only" for="question">你的问题</label>
             <textarea
               id="question"
               name="question"
-              rows="7"
+              rows="3"
               placeholder="例如：十四五期间上海综合交通发展的总体思路是什么？"
               required
             ></textarea>
-          </label>
 
-          <div class="quick-questions" id="quick-questions" aria-label="快捷问题"></div>
+            <div class="composer-actions">
+              <button id="settings-btn" class="secondary-btn" type="button" aria-expanded="false" aria-controls="settings-popover">
+                设置
+              </button>
+              <button id="submit-btn" type="submit">发送</button>
+            </div>
 
-          <div class="actions">
-            <button id="submit-btn" type="submit">开始问答</button>
             <p id="status-text" role="status" aria-live="polite">准备就绪</p>
-          </div>
-        </form>
+          </form>
+        </section>
 
-        <section id="result-panel" class="glass-card result-panel" aria-live="polite">
+        <aside id="details-panel" class="glass-card details-panel" aria-live="polite">
           <div class="panel-head">
-            <h2>回答结果</h2>
+            <h2>详细信息</h2>
+            <button id="details-toggle" class="secondary-btn ghost-btn" type="button" aria-expanded="false">打开详情</button>
+          </div>
+
+          <div id="details-content" class="details-content">
             <div class="badges">
               <span id="badge-mode" class="badge">模式：-</span>
               <span id="badge-category" class="badge">分类：-</span>
               <span id="badge-time" class="badge">耗时：-</span>
             </div>
-          </div>
 
-          <article id="answer" class="answer empty">等待提问...</article>
+            <div class="meta-grid">
+              <section class="meta-block">
+                <h3>识别实体</h3>
+                <ul id="entities-list" class="chip-list empty"></ul>
+              </section>
+              <section class="meta-block">
+                <h3>路径证据</h3>
+                <ul id="paths-list" class="trace-list empty"></ul>
+              </section>
+            </div>
 
-          <div class="meta-grid">
-            <section class="meta-block">
-              <h3>识别实体</h3>
-              <ul id="entities-list" class="chip-list empty"></ul>
+            <section class="meta-block evidence-block">
+              <h3>文本证据片段</h3>
+              <ul id="docs-list" class="doc-list empty"></ul>
             </section>
-            <section class="meta-block">
-              <h3>路径证据</h3>
-              <ul id="paths-list" class="trace-list empty"></ul>
-            </section>
           </div>
-
-          <section class="meta-block evidence-block">
-            <h3>文本证据片段</h3>
-            <ul id="docs-list" class="doc-list empty"></ul>
-          </section>
-        </section>
+        </aside>
       </section>
     </main>
 
