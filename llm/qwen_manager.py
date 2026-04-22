@@ -1,9 +1,11 @@
 from functools import lru_cache
+from threading import Thread
 from typing import Any
 
 import torch
 from langchain_core.language_models.llms import LLM
 from pydantic import ConfigDict
+from transformers import TextIteratorStreamer
 
 from config.settings import HF_TOKEN, MAX_NEW_TOKENS, RAG_ANSWER_MODEL_NAME
 from utils.hf_loader import load_auto_causal_lm, load_auto_tokenizer
@@ -33,6 +35,9 @@ class QwenTransformersLLM(LLM):
         }
 
     def _call(self, prompt: str, stop: list[str] | None = None, run_manager: Any = None, **kwargs: Any) -> str:
+        return self.invoke_with_prompt(prompt=prompt, stop=stop, **kwargs)
+
+    def invoke_with_prompt(self, prompt: str, stop: list[str] | None = None, **kwargs: Any) -> str:
         rendered_prompt = self._build_chat_prompt(prompt)
         model_inputs = self.tokenizer(rendered_prompt, return_tensors="pt")
         model_inputs = {key: value.to(self._resolve_device()) for key, value in model_inputs.items()}
@@ -66,6 +71,55 @@ class QwenTransformersLLM(LLM):
             response = self._apply_stop_tokens(response, stop)
         return response
 
+    def stream(self, prompt: str, stop: list[str] | None = None, **kwargs: Any):
+        rendered_prompt = self._build_chat_prompt(prompt)
+        model_inputs = self.tokenizer(rendered_prompt, return_tensors="pt")
+        model_inputs = {key: value.to(self._resolve_device()) for key, value in model_inputs.items()}
+
+        streamer = TextIteratorStreamer(
+            self.tokenizer,
+            skip_prompt=True,
+            skip_special_tokens=True,
+        )
+        generation_kwargs = {
+            "max_new_tokens": kwargs.get("max_new_tokens", self.max_new_tokens),
+            "pad_token_id": self.tokenizer.pad_token_id,
+            "eos_token_id": self.tokenizer.eos_token_id,
+            "streamer": streamer,
+        }
+
+        temperature = kwargs.get("temperature", self.temperature)
+        top_p = kwargs.get("top_p", self.top_p)
+        if temperature and temperature > 0:
+            generation_kwargs.update(
+                {
+                    "do_sample": True,
+                    "temperature": temperature,
+                    "top_p": top_p,
+                }
+            )
+        else:
+            generation_kwargs["do_sample"] = False
+
+        worker = Thread(
+            target=self._generate_with_streamer,
+            kwargs={**model_inputs, **generation_kwargs},
+            daemon=True,
+        )
+        worker.start()
+
+        for chunk in streamer:
+            if not chunk:
+                continue
+            yield chunk
+
+        if worker.is_alive():
+            worker.join()
+
+    def _generate_with_streamer(self, **kwargs: Any) -> None:
+        with torch.no_grad():
+            self.model.generate(**kwargs)
+
     def _build_chat_prompt(self, prompt: str) -> str:
         if hasattr(self.tokenizer, "apply_chat_template"):
             messages = [{"role": "user", "content": prompt}]
@@ -94,12 +148,7 @@ class QwenTransformersLLM(LLM):
 
 
 @lru_cache(maxsize=4)
-def load_qwen_llm(
-    model_name: str = RAG_ANSWER_MODEL_NAME,
-    max_new_tokens: int = MAX_NEW_TOKENS,
-    temperature: float = 0.1,
-    top_p: float = 0.9,
-) -> QwenTransformersLLM:
+def _load_qwen_backend(model_name: str) -> tuple[Any, Any]:
     tokenizer = load_auto_tokenizer(
         model_name=model_name,
         token=HF_TOKEN,
@@ -116,6 +165,17 @@ def load_qwen_llm(
         trust_remote_code=True,
     )
     model.eval()
+
+    return tokenizer, model
+
+
+def load_qwen_llm(
+    model_name: str = RAG_ANSWER_MODEL_NAME,
+    max_new_tokens: int = MAX_NEW_TOKENS,
+    temperature: float = 0.1,
+    top_p: float = 0.9,
+) -> QwenTransformersLLM:
+    tokenizer, model = _load_qwen_backend(model_name=model_name)
 
     return QwenTransformersLLM(
         tokenizer=tokenizer,

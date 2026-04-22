@@ -7,6 +7,10 @@ from langchain_core.retrievers import BaseRetriever
 from pydantic import ConfigDict
 
 from config.settings import (
+    PATHRAG_ENABLE_LLM_TRIPLET,
+    PATHRAG_HYBRID_DOC_PATH_BETA,
+    PATHRAG_HYBRID_PATH_VECTOR_ALPHA,
+    PROMPT_CONFIG,
     RAG_ANSWER_MODEL_NAME,
     RAG_CLASSIFIER_MAX_NEW_TOKENS,
     RAG_CLASSIFIER_MODEL_NAME,
@@ -15,10 +19,6 @@ from config.settings import (
     RAG_RERANK_CANDIDATE_TOP_K,
     RAG_REWRITE_MAX_NEW_TOKENS,
     RAG_REWRITE_MODEL_NAME,
-    PROMPT_CONFIG,
-    PATHRAG_ENABLE_LLM_TRIPLET,
-    PATHRAG_HYBRID_DOC_PATH_BETA,
-    PATHRAG_HYBRID_PATH_VECTOR_ALPHA,
 )
 from llm.qwen_manager import load_qwen_llm
 from retrieval.reranker import load_reranker, rerank_documents
@@ -43,21 +43,19 @@ def _get_prompt_config() -> dict[str, Any]:
 
 
 def _get_rewrite_prompt_template() -> str:
-    config = _get_prompt_config()
-    template = config.get("rewrite", "")
-    return str(template).strip()
+    return str(_get_prompt_config().get("rewrite", "")).strip()
 
 
 def _get_classifier_prompt_template() -> str:
-    config = _get_prompt_config()
-    template = config.get("question_classifier", "")
-    return str(template).strip()
+    return str(_get_prompt_config().get("question_classifier", "")).strip()
 
 
 def _get_category_instruction(category: str) -> str:
     config = _get_prompt_config()
     answer_style_prompts = config.get("answer_style_prompts", {}) or {}
-    default_style = str(config.get("default_answer_style_prompt", "请保持回答结构清晰，优先提炼与问题最相关的政策信息。")).strip()
+    default_style = str(
+        config.get("default_answer_style_prompt", "请保持回答结构清晰，优先提炼与问题最相关的政策信息。")
+    ).strip()
     selected = answer_style_prompts.get(category)
     return str(selected).strip() if selected else default_style
 
@@ -138,7 +136,7 @@ class VectorDBRetriever(BaseRetriever):
             top_k=retrieval_k,
         )
 
-        documents = []
+        documents: list[Document] = []
         if self.use_rerank and self.reranker and retrieved_docs:
             reranked_docs = rerank_documents(
                 query=query,
@@ -163,15 +161,16 @@ def rewrite_question(question: str) -> str:
     if not RAG_ENABLE_QUERY_REWRITE:
         return question
 
+    rewrite_prompt_template = _get_rewrite_prompt_template()
+    if not rewrite_prompt_template:
+        return question
+
     rewrite_llm = load_qwen_llm(
         model_name=RAG_REWRITE_MODEL_NAME,
         max_new_tokens=RAG_REWRITE_MAX_NEW_TOKENS,
         temperature=0.0,
         top_p=1.0,
     )
-    rewrite_prompt_template = _get_rewrite_prompt_template()
-    if not rewrite_prompt_template:
-        return question
     prompt = PromptTemplate(input_variables=["question"], template=rewrite_prompt_template)
 
     try:
@@ -179,10 +178,8 @@ def rewrite_question(question: str) -> str:
     except Exception:
         return question
 
-    cleaned = rewritten.splitlines()[0].strip().strip("\"'“”") if rewritten else ""
-    if not cleaned:
-        return question
-    return cleaned
+    cleaned = rewritten.splitlines()[0].strip().strip("\"'") if rewritten else ""
+    return cleaned or question
 
 
 def classify_question(question: str) -> str:
@@ -208,16 +205,7 @@ def classify_question(question: str) -> str:
 
 
 def build_retrieval_qa_chain(top_k: int = DEFAULT_TOP_K, answer_prompt_template: str | None = None) -> RetrievalQA:
-    collection, embedding_model = get_collection(), get_embedding_model()
-    reranker = load_reranker() if RAG_ENABLE_RERANK else None
-    retriever = VectorDBRetriever(
-        collection=collection,
-        embedding_model=embedding_model,
-        top_k=top_k,
-        candidate_top_k=max(top_k, RAG_RERANK_CANDIDATE_TOP_K),
-        use_rerank=RAG_ENABLE_RERANK,
-        reranker=reranker,
-    )
+    retriever = build_vector_retriever(top_k=top_k)
     llm = load_qwen_llm(model_name=RAG_ANSWER_MODEL_NAME)
     prompt = PromptTemplate(
         input_variables=["context", "question"],
@@ -232,17 +220,139 @@ def build_retrieval_qa_chain(top_k: int = DEFAULT_TOP_K, answer_prompt_template:
     )
 
 
-def ask(question: str, top_k: int = DEFAULT_TOP_K) -> dict[str, Any]:
-    # rewritten_question = rewrite_question(question)
+def build_vector_retriever(top_k: int = DEFAULT_TOP_K) -> VectorDBRetriever:
+    collection, embedding_model = get_collection(), get_embedding_model()
+    reranker = load_reranker() if RAG_ENABLE_RERANK else None
+    return VectorDBRetriever(
+        collection=collection,
+        embedding_model=embedding_model,
+        top_k=top_k,
+        candidate_top_k=max(top_k, RAG_RERANK_CANDIDATE_TOP_K),
+        use_rerank=RAG_ENABLE_RERANK,
+        reranker=reranker,
+    )
+
+
+def prepare_vector_answer(question: str, top_k: int = DEFAULT_TOP_K) -> dict[str, Any]:
     rewritten_question = question
     question_category = classify_question(rewritten_question)
-    answer_prompt_template = _get_rag_answer_prompt_template(question_category)
-    qa_chain = build_retrieval_qa_chain(top_k=top_k, answer_prompt_template=answer_prompt_template)
-    result = qa_chain.invoke({"query": rewritten_question})
-    result["original_query"] = question
-    result["rewritten_query"] = rewritten_question
-    result["question_category"] = question_category
-    return result
+    prompt_template = PromptTemplate(
+        input_variables=["context", "question"],
+        template=_get_rag_answer_prompt_template(question_category),
+    )
+    retriever = build_vector_retriever(top_k=top_k)
+    source_documents = retriever._get_relevant_documents(rewritten_question)
+    context = "\n\n".join(doc.page_content for doc in source_documents)
+    llm = load_qwen_llm(model_name=RAG_ANSWER_MODEL_NAME)
+    prompt = prompt_template.format(context=context, question=rewritten_question)
+    return {
+        "llm": llm,
+        "prompt": prompt,
+        "source_documents": source_documents,
+        "original_query": question,
+        "rewritten_query": rewritten_question,
+        "question_category": question_category,
+    }
+
+
+def ask(question: str, top_k: int = DEFAULT_TOP_K) -> dict[str, Any]:
+    prepared = prepare_vector_answer(question=question, top_k=top_k)
+    answer_text = prepared["llm"].invoke_with_prompt(prepared["prompt"])
+    return {
+        "result": answer_text,
+        "source_documents": prepared["source_documents"],
+        "original_query": prepared["original_query"],
+        "rewritten_query": prepared["rewritten_query"],
+        "question_category": prepared["question_category"],
+    }
+
+
+def prepare_pathrag_answer(
+    question: str,
+    vector_top_k: int = DEFAULT_TOP_K,
+    max_hops: int = 3,
+    top_paths: int = 5,
+    enable_llm_triplet: bool = PATHRAG_ENABLE_LLM_TRIPLET,
+    hybrid_path_vector_alpha: float = PATHRAG_HYBRID_PATH_VECTOR_ALPHA,
+    hybrid_doc_path_beta: float = PATHRAG_HYBRID_DOC_PATH_BETA,
+) -> dict[str, Any]:
+    from graph.pathrag_engine import build_pathrag_pipeline
+
+    rewritten_question = rewrite_question(question)
+    question_category = classify_question(rewritten_question)
+    category_instruction = _get_category_instruction(question_category)
+
+    pipeline = build_pathrag_pipeline(
+        max_hops=max_hops,
+        top_paths=top_paths,
+        enable_llm_triplet=enable_llm_triplet,
+        hybrid_path_vector_alpha=hybrid_path_vector_alpha,
+        hybrid_doc_path_beta=hybrid_doc_path_beta,
+    )
+    retrieved_docs = retrieve(
+        query=rewritten_question,
+        collection=pipeline.collection,
+        embedding_model=pipeline.embedding_model,
+        top_k=max(vector_top_k, pipeline.top_paths),
+    )
+    query_entities = pipeline.link_query_entities(rewritten_question)
+    paths = pipeline.retrieve_paths(rewritten_question, query_entities)
+    paths = pipeline._hybrid_rescore_paths(rewritten_question, paths, retrieved_docs)
+    path_context = pipeline.build_path_context(paths)
+
+    reranked_docs = pipeline._hybrid_rerank_docs(rewritten_question, retrieved_docs, paths)
+    selected_docs = reranked_docs[:vector_top_k]
+    vector_context = "\n\n".join(doc for doc, _distance, _meta, _hybrid in selected_docs)
+
+    prompt_config = PROMPT_CONFIG()
+    base_template = str(prompt_config.get("pathrag_answer_base", "")).strip()
+    if not base_template:
+        base_template = (
+            "你是一名轨道交通政策问答助手。请根据给定问题、路径证据和文本证据回答。\n"
+            "规则：\n"
+            "1. 优先使用路径证据组织逻辑，再用文本证据补充事实。\n"
+            "2. 不得编造，无法确定时回答：根据现有资料无法确定。\n"
+            "3. 回答简洁且只输出最终答案。\n\n"
+            "分类回答风格要求：\n{category_instruction}\n\n"
+            "[问题]\n{question}\n\n"
+            "[路径证据]\n{path_context}\n\n"
+            "[文本证据]\n{vector_context}\n\n"
+            "[回答]"
+        )
+
+    prompt = base_template.format(
+        question=rewritten_question,
+        path_context=path_context or "无可用路径证据",
+        vector_context=vector_context or "无可用文本证据",
+        category_instruction=category_instruction or "请保持回答结构清晰，优先提炼与问题最相关的政策信息。",
+    )
+    return {
+        "llm": pipeline.llm,
+        "prompt": prompt,
+        "original_query": question,
+        "rewritten_query": rewritten_question,
+        "question_category": question_category,
+        "query_entities": query_entities,
+        "paths": [
+            {
+                "path": pipeline.serialize_path(path),
+                "score": path.score,
+                "hybrid_score": path.hybrid_score,
+                "sources": sorted({edge.doc_source for edge in path.edges if edge.doc_source}),
+            }
+            for path in paths
+        ],
+        "path_context": path_context,
+        "vector_context_docs": [
+            {
+                "content": doc,
+                "distance": distance,
+                "metadata": metadata,
+                "hybrid_score": hybrid_score,
+            }
+            for doc, distance, metadata, hybrid_score in selected_docs
+        ],
+    }
 
 
 def ask_with_pathrag(
@@ -254,29 +364,29 @@ def ask_with_pathrag(
     hybrid_path_vector_alpha: float = PATHRAG_HYBRID_PATH_VECTOR_ALPHA,
     hybrid_doc_path_beta: float = PATHRAG_HYBRID_DOC_PATH_BETA,
 ) -> dict[str, Any]:
-    from graph.pathrag_engine import ask_pathrag
-
-    rewritten_question = rewrite_question(question)
-    question_category = classify_question(rewritten_question)
-    category_instruction = _get_category_instruction(question_category)
-
-    result = ask_pathrag(
-        question=rewritten_question,
+    prepared = prepare_pathrag_answer(
+        question=question,
         vector_top_k=vector_top_k,
         max_hops=max_hops,
         top_paths=top_paths,
         enable_llm_triplet=enable_llm_triplet,
         hybrid_path_vector_alpha=hybrid_path_vector_alpha,
         hybrid_doc_path_beta=hybrid_doc_path_beta,
-        category_instruction=category_instruction,
     )
-    result["original_query"] = question
-    result["rewritten_query"] = rewritten_question
-    result["question_category"] = question_category
-    return result
+    answer_text = prepared["llm"].invoke_with_prompt(prepared["prompt"])
+    return {
+        "result": answer_text,
+        "original_query": prepared["original_query"],
+        "rewritten_query": prepared["rewritten_query"],
+        "question_category": prepared["question_category"],
+        "query_entities": prepared["query_entities"],
+        "paths": prepared["paths"],
+        "path_context": prepared["path_context"],
+        "vector_context_docs": prepared["vector_context_docs"],
+    }
 
 
-def ask_with_multi_recall(
+def prepare_multi_recall_answer(
     question: str,
     vector_top_k: int = DEFAULT_TOP_K,
     max_hops: int = 3,
@@ -328,24 +438,21 @@ def ask_with_multi_recall(
     else:
         selected_docs = pathrag_pipeline._hybrid_rerank_docs(rewritten_question, retrieved_docs, paths)[:vector_top_k]
 
-    vector_context = "\n\n".join([doc for doc, _distance, _meta, _score in selected_docs])
-
+    vector_context = "\n\n".join(doc for doc, _distance, _meta, _score in selected_docs)
     llm = load_qwen_llm(model_name=RAG_ANSWER_MODEL_NAME)
-    prompt = PromptTemplate(
+    prompt_template = PromptTemplate(
         input_variables=["question", "path_context", "vector_context", "category_instruction"],
         template=_get_multi_recall_answer_prompt_template(),
     )
-    answer_text = llm.invoke(
-        prompt.format(
+
+    return {
+        "llm": llm,
+        "prompt": prompt_template.format(
             question=rewritten_question,
             path_context=path_context or "无可用路径证据",
             vector_context=vector_context or "无可用向量证据",
             category_instruction=category_instruction,
-        )
-    )
-
-    return {
-        "result": answer_text,
+        ),
         "original_query": question,
         "rewritten_query": rewritten_question,
         "question_category": question_category,
@@ -369,4 +476,35 @@ def ask_with_multi_recall(
             }
             for doc, distance, metadata, score in selected_docs
         ],
+    }
+
+
+def ask_with_multi_recall(
+    question: str,
+    vector_top_k: int = DEFAULT_TOP_K,
+    max_hops: int = 3,
+    top_paths: int = 5,
+    enable_llm_triplet: bool = PATHRAG_ENABLE_LLM_TRIPLET,
+    hybrid_path_vector_alpha: float = PATHRAG_HYBRID_PATH_VECTOR_ALPHA,
+    hybrid_doc_path_beta: float = PATHRAG_HYBRID_DOC_PATH_BETA,
+) -> dict[str, Any]:
+    prepared = prepare_multi_recall_answer(
+        question=question,
+        vector_top_k=vector_top_k,
+        max_hops=max_hops,
+        top_paths=top_paths,
+        enable_llm_triplet=enable_llm_triplet,
+        hybrid_path_vector_alpha=hybrid_path_vector_alpha,
+        hybrid_doc_path_beta=hybrid_doc_path_beta,
+    )
+    answer_text = prepared["llm"].invoke_with_prompt(prepared["prompt"])
+    return {
+        "result": answer_text,
+        "original_query": prepared["original_query"],
+        "rewritten_query": prepared["rewritten_query"],
+        "question_category": prepared["question_category"],
+        "query_entities": prepared["query_entities"],
+        "paths": prepared["paths"],
+        "path_context": prepared["path_context"],
+        "vector_context_docs": prepared["vector_context_docs"],
     }
