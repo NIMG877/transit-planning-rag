@@ -1,12 +1,13 @@
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from webapp.schemas import ChatRequest, ChatResponse
-from webapp.service import run_chat
+from webapp.service import run_chat, run_chat_stream
 
 APP_TITLE = "轨道交通规划与政策智能问答助手"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -41,3 +42,28 @@ def chat(payload: ChatRequest) -> ChatResponse:
         return run_chat(normalized_payload)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"问答失败: {exc}") from exc
+
+
+@app.post("/api/chat/stream")
+def chat_stream(payload: ChatRequest) -> StreamingResponse:
+    clean_question = payload.question.strip()
+    if not clean_question:
+        raise HTTPException(status_code=400, detail="问题不能为空")
+
+    normalized_payload = payload.model_copy(update={"question": clean_question})
+
+    def event_stream():
+        try:
+            yield from run_chat_stream(normalized_payload)
+        except Exception as exc:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

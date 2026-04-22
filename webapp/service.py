@@ -1,9 +1,17 @@
+import json
 from time import perf_counter
-from typing import Any
+from typing import Any, Iterator
 
 from langchain_core.documents import Document
 
-from rag.pipeline import ask, ask_with_multi_recall, ask_with_pathrag
+from rag.pipeline import (
+    ask,
+    ask_with_multi_recall,
+    ask_with_pathrag,
+    prepare_multi_recall_answer,
+    prepare_pathrag_answer,
+    prepare_vector_answer,
+)
 from webapp.schemas import ChatRequest, ChatResponse, EvidenceDoc, PathEvidence
 
 
@@ -80,21 +88,16 @@ def _normalize_docs_from_path_or_hybrid(raw_result: dict[str, Any]) -> list[Evid
     return normalized
 
 
-def run_chat(request: ChatRequest) -> ChatResponse:
-    started = perf_counter()
-    clean_question = request.question.strip()
-
+def _build_chat_response(
+    request: ChatRequest,
+    clean_question: str,
+    raw_result: dict[str, Any],
+    elapsed_ms: int,
+) -> ChatResponse:
     if request.mode == "vector":
-        raw_result = ask(question=clean_question, top_k=request.top_k)
         evidence_docs = _normalize_docs_from_vector(raw_result)
-    elif request.mode == "pathrag":
-        raw_result = ask_with_pathrag(question=clean_question, vector_top_k=request.top_k)
-        evidence_docs = _normalize_docs_from_path_or_hybrid(raw_result)
     else:
-        raw_result = ask_with_multi_recall(question=clean_question, vector_top_k=request.top_k)
         evidence_docs = _normalize_docs_from_path_or_hybrid(raw_result)
-
-    elapsed_ms = int((perf_counter() - started) * 1000)
 
     return ChatResponse(
         mode=request.mode,
@@ -107,3 +110,53 @@ def run_chat(request: ChatRequest) -> ChatResponse:
         evidence_docs=evidence_docs,
         elapsed_ms=elapsed_ms,
     )
+
+
+def _prepare_chat(request: ChatRequest, clean_question: str) -> dict[str, Any]:
+    if request.mode == "vector":
+        return prepare_vector_answer(question=clean_question, top_k=request.top_k)
+    if request.mode == "pathrag":
+        return prepare_pathrag_answer(question=clean_question, vector_top_k=request.top_k)
+    return prepare_multi_recall_answer(question=clean_question, vector_top_k=request.top_k)
+
+
+def _sse_event(payload: dict[str, Any]) -> str:
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+def run_chat(request: ChatRequest) -> ChatResponse:
+    started = perf_counter()
+    clean_question = request.question.strip()
+
+    if request.mode == "vector":
+        raw_result = ask(question=clean_question, top_k=request.top_k)
+    elif request.mode == "pathrag":
+        raw_result = ask_with_pathrag(question=clean_question, vector_top_k=request.top_k)
+    else:
+        raw_result = ask_with_multi_recall(question=clean_question, vector_top_k=request.top_k)
+    elapsed_ms = int((perf_counter() - started) * 1000)
+    return _build_chat_response(request, clean_question, raw_result, elapsed_ms)
+
+
+def run_chat_stream(request: ChatRequest) -> Iterator[str]:
+    started = perf_counter()
+    clean_question = request.question.strip()
+    prepared = _prepare_chat(request, clean_question)
+
+    llm = prepared.pop("llm")
+    prompt = prepared.pop("prompt")
+    answer_parts: list[str] = []
+
+    yield _sse_event({"type": "start"})
+
+    for chunk in llm.stream(prompt):
+        answer_parts.append(chunk)
+        yield _sse_event({"type": "token", "delta": chunk})
+
+    raw_result = {
+        **prepared,
+        "result": "".join(answer_parts).strip(),
+    }
+    elapsed_ms = int((perf_counter() - started) * 1000)
+    payload = _build_chat_response(request, clean_question, raw_result, elapsed_ms).model_dump()
+    yield _sse_event({"type": "done", "payload": payload})
